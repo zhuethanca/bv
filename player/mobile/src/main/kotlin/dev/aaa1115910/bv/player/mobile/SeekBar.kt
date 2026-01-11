@@ -41,9 +41,9 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import dev.aaa1115910.bv.player.seekbar.SeekBar
 import dev.aaa1115910.bv.player.seekbar.SeekBarThumb
 import dev.aaa1115910.bv.player.seekbar.SeekMoveState
+import dev.aaa1115910.bv.player.seekbar.WavySeekBar
 import dev.aaa1115910.bv.util.formatHourMinSec
 import kotlinx.coroutines.delay
 import kotlin.math.max
@@ -126,7 +126,7 @@ fun VideoSeekBar(
             )
         }
 
-        SeekBar(
+        WavySeekBar(
             modifier = Modifier.padding(horizontal = 16.dp),
             duration = duration,
             position = if (pressing) previewPosition else position,
