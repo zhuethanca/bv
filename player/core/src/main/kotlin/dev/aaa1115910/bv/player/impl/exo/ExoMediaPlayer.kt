@@ -17,15 +17,30 @@ import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import dev.aaa1115910.bv.player.AbstractVideoPlayer
 import dev.aaa1115910.bv.player.OkHttpUtil
 import dev.aaa1115910.bv.player.VideoPlayerOptions
+import dev.aaa1115910.bv.sponsorblock.SponsorBlockClient
+import dev.aaa1115910.bv.sponsorblock.entity.Segment
+import dev.aaa1115910.bv.sponsorblock.entity.SponsorBlockSettings
 import dev.aaa1115910.bv.util.formatHourMinSec
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(UnstableApi::class)
 class ExoMediaPlayer(
     private val context: Context,
-    private val options: VideoPlayerOptions
+    private val options: VideoPlayerOptions,
+    private val sponsorBlockSettings: SponsorBlockSettings
 ) : AbstractVideoPlayer(), Player.Listener {
     var mPlayer: ExoPlayer? = null
     protected var mMediaSource: MediaSource? = null
+
+    private val sponsorBlockClient = SponsorBlockClient()
+    private var segments = listOf<Segment>()
+    private var currentBvId = ""
+    private var currentCid = 0L
+
+    private val scope = CoroutineScope(Dispatchers.Main)
 
     @OptIn(UnstableApi::class)
     private val dataSourceFactory =
@@ -68,7 +83,12 @@ class ExoMediaPlayer(
     }
 
     @OptIn(UnstableApi::class)
-    override fun playUrl(videoUrl: String?, audioUrl: String?) {
+    override fun playUrl(
+        videoUrl: String?,
+        audioUrl: String?,
+        bvId: String,
+        cid: Long
+    ) {
         val videoMediaSource = videoUrl?.let {
             ProgressiveMediaSource.Factory(dataSourceFactory)
                 .createMediaSource(MediaItem.fromUri(it))
@@ -80,6 +100,23 @@ class ExoMediaPlayer(
 
         val mediaSources = listOfNotNull(videoMediaSource, audioMediaSource)
         mMediaSource = MergingMediaSource(*mediaSources.toTypedArray())
+
+        this.currentBvId = bvId
+        this.currentCid = cid
+        fetchSponsorBlockSegments()
+    }
+
+    private fun fetchSponsorBlockSegments() {
+        if (!sponsorBlockSettings.enabled) return
+        scope.launch {
+            runCatching {
+                segments = sponsorBlockClient.getSkipSegments(
+                    currentBvId,
+                    currentCid.toString(),
+                    sponsorBlockSettings
+                )
+            }
+        }
     }
 
     @OptIn(UnstableApi::class)
@@ -143,9 +180,34 @@ class ExoMediaPlayer(
         }
     }
 
+    private fun checkSponsorBlock() {
+        if (!sponsorBlockSettings.enabled) return
+        if (segments.isEmpty()) return
+
+        val position = currentPosition
+        val segment = segments.find {
+            position >= it.segment[0] * 1000 && position < it.segment[1] * 1000
+        }
+
+        if (segment != null && sponsorBlockSettings.categories.contains(segment.category)) {
+            if (sponsorBlockSettings.autoSkip) {
+                seekTo((segment.segment[1] * 1000).toLong())
+                if (sponsorBlockSettings.showToast) {
+                    mPlayerEventListener?.onShowToast("已为您跳过 ${segment.category} 片段")
+                }
+            }
+        }
+    }
+
     override fun onIsPlayingChanged(isPlaying: Boolean) {
         if (isPlaying) {
             mPlayerEventListener?.onPlay()
+            scope.launch {
+                while (mPlayer?.isPlaying == true) {
+                    checkSponsorBlock()
+                    delay(500)
+                }
+            }
         } else {
             mPlayerEventListener?.onPause()
         }
@@ -187,6 +249,9 @@ class ExoMediaPlayer(
         get() = mPlayer?.videoSize?.width ?: 0
     override val videoHeight: Int
         get() = mPlayer?.videoSize?.height ?: 0
+
+    override val sponsorBlockSegments: List<Segment>
+        get() = segments
 
     override fun onPlayerError(error: PlaybackException) {
         mPlayerEventListener?.onError(error)

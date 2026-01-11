@@ -77,7 +77,8 @@ fun BvPlayer(
     onLoadNextVideo: () -> Unit,
     onLoadNewVideo: (VideoListItem) -> Unit,
     videoPlayer: AbstractVideoPlayer,
-    danmakuPlayer: DanmakuPlayer?
+    danmakuPlayer: DanmakuPlayer?,
+    onSkip: () -> Unit
 ) {
     val logger = KotlinLogging.logger("BvPlayer")
     // 直接调用 danmakuPlayer 会始终为 null
@@ -257,6 +258,9 @@ fun BvPlayer(
             mDanmakuPlayer?.seekTo(currentPosition)
         }
 
+        override fun onShowToast(message: String) {
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -374,7 +378,8 @@ fun BvPlayer(
             onPlayNewVideo = {
                 //if (!Prefs.incognitoMode) sendHeartbeat()
                 onLoadNewVideo(it)
-            }
+            },
+            onSkip = onSkip
         ) {
             BvVideoPlayer(
                 modifier = Modifier

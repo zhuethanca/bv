@@ -60,8 +60,11 @@ class VideoPlayerActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        initVideoPlayer()
-        initDanmakuPlayer()
+        lifecycleScope.launch {
+            val sponsorBlockSettings = playerViewModel.sponsorBlockSettings
+            initVideoPlayer(sponsorBlockSettings)
+            initDanmakuPlayer()
+        }
         setContent {
             val windowSizeClass = calculateWindowSizeClass(this)
             BVMobileTheme {
@@ -72,7 +75,7 @@ class VideoPlayerActivity : ComponentActivity() {
         }
     }
 
-    private fun initVideoPlayer() {
+    private fun initVideoPlayer(sponsorBlockSettings: dev.aaa1115910.bv.sponsorblock.entity.SponsorBlockSettings) {
         if (playerViewModel.videoPlayer != null) return
         logger.fInfo { "initVideoPlayer" }
         val options = VideoPlayerOptions(
@@ -86,7 +89,7 @@ class VideoPlayerActivity : ComponentActivity() {
             }
         )
         val videoPlayer = when (Prefs.playerType) {
-            PlayerType.Media3 -> ExoPlayerFactory().create(this, options)
+            PlayerType.Media3 -> ExoPlayerFactory().create(this, options, sponsorBlockSettings)
         }
         playerViewModel.videoPlayer = videoPlayer
         //TODO 还没处理旋转后的一些判断，就先放这了

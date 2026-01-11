@@ -64,9 +64,15 @@ class VideoPlayerV3Activity : ComponentActivity() {
 
     private val playerViewModel: VideoPlayerV3ViewModel by viewModel()
 
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        initVideoPlayer()
+        lifecycleScope.launch {
+            val sponsorBlockSettings = playerViewModel.sponsorBlockSettings
+            initVideoPlayer(sponsorBlockSettings)
+        }
         //initDanmakuPlayer()
         getParamsFromIntent()
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -90,7 +96,7 @@ class VideoPlayerV3Activity : ComponentActivity() {
         playerViewModel.danmakuPlayer?.pause()
     }
 
-    private fun initVideoPlayer() {
+    private fun initVideoPlayer(sponsorBlockSettings: dev.aaa1115910.bv.sponsorblock.entity.SponsorBlockSettings) {
         dev.aaa1115910.bv.tv.activities.video.VideoPlayerV3Activity.Companion.logger.info { "Init video player: ${Prefs.playerType.name}" }
         val options = VideoPlayerOptions(
             userAgent = when (Prefs.apiType) {
@@ -104,7 +110,7 @@ class VideoPlayerV3Activity : ComponentActivity() {
             enableFfmpegAudioRenderer = Prefs.enableFfmpegAudioRenderer
         )
         val videoPlayer = when (Prefs.playerType) {
-            PlayerType.Media3 -> ExoPlayerFactory().create(this, options)
+            PlayerType.Media3 -> ExoPlayerFactory().create(this, options, sponsorBlockSettings)
         }
         playerViewModel.videoPlayer = videoPlayer
     }

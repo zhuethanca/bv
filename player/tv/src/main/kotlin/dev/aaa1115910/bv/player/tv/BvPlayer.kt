@@ -101,6 +101,7 @@ fun BvPlayer(
     onSubtitleBackgroundOpacityChange: (Float) -> Unit,
     onSubtitleBottomPadding: (Dp) -> Unit,
     onPlayModeChange: (PlayMode) -> Unit
+    onSkip: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
     val logger = KotlinLogging.logger("BvPlayer")
@@ -323,6 +324,10 @@ fun BvPlayer(
 
         override fun onSeekForward(seekForwardIncrementMs: Long) {
             mDanmakuPlayer?.seekTo(currentPosition)
+        }
+
+        override fun onShowToast(message: String) {
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -635,6 +640,7 @@ fun BvPlayer(
                 onPlayModeChange(playMode)
             },
             onRequestFocus = { focusRequester.requestFocus() },
+            onSkip = onSkip
         ) {
             LaunchedEffect(Unit) {
                 videoPlayer.setOptions()
